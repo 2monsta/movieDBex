@@ -13,9 +13,17 @@ const imageBaseUrl = 'http://image.tmdb.org/t/p/w300';
 /* GET home page. */
 router.get('/', function(req, res, next) {
 	request.get(nowPlayingUrl, (error, response, movieData)=>{
-
+		if(error){
+			console.log(error);
+		}else{
+			var parsedData = JSON.parse(movieData);
+			res.render("test", {
+				parsedData: parsedData.results,
+				imageBaseUrl: imageBaseUrl
+			});
+		}
 	});
-    res.render('index', { title: 'Express' });
+    // res.render('index', { title: 'Express' });
 });
 
 module.exports = router;
