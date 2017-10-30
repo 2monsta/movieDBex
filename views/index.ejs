@@ -10,9 +10,16 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-sm-12">
+				<form action = "/search" method="POST">
+					<input type="text" name="movieSearch" value="">
+				</form>
+			</div>
+			<div class="col-sm-12">
 				<% for(let i = 0; i<parsedData.length; i++){ %>
 					<div class="col-sm-3">
-						<img src="<%= imageBaseUrl + parsedData[i].poster_path %>" alt="">
+						<a href="/movie/<%= parsedData[i].id %>">
+							<img src="<%= imageBaseUrl + parsedData[i].poster_path %>" alt="">
+						</a>
 					</div>
 				<% } %>
 			</div>
