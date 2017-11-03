@@ -1,6 +1,7 @@
 extends layout
 
 block content
+	h1 #{message}
 	form(action="/registerProcess", method="post")
 		.col-sm-offset-4.col-sm-4.text-center
 			input.col-sm-12.text-center(type="text" placeholder="name" name="name")

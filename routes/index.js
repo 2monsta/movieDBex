@@ -2,13 +2,23 @@ var express = require('express');
 var router = express.Router();
 var config = require("../config/config");
 var request = require("request");
+var mysql = require("mysql");
 
 
 const apiBaseUrl = 'http://api.themoviedb.org/3';
 const nowPlayingUrl = apiBaseUrl + '/movie/now_playing?api_key='+config.apiKey
 const imageBaseUrl = 'http://image.tmdb.org/t/p/w300';
 
-
+var connection = mysql.createConnection(/* {
+	host: config.db.host,
+	user: config.db.user,
+	password:config.db.password,
+	database: config.db.database
+} */
+config.db);
+connection.connect((error)=>{
+	console.log(error);
+});
 
 /* GET home page. */
 // router.get('/', function(req, res, next) {
@@ -48,7 +58,8 @@ const imageBaseUrl = 'http://image.tmdb.org/t/p/w300';
 
 
 router.get("/", (req, res, next)=>{
-	res.render("index");
+	var message = req.query.msg;
+	res.render("index", {message:message});
 })
 // anything in a form that has name send through a get request, is available inside the req.query
 
@@ -56,5 +67,27 @@ router.post("/registerProcess", (req, res, next)=>{
 	var name = req.body.name;
 	var email = req.body.email;
 	var password = req.body.password;
+	// checked to see if this person has been registerd
+	// we need a select statement
+	// if the email already exists, stop and send them an error
+	// if the email doesn't exist, insert into the data base
+
+	var selectQuery = "select * from users where email=?;";
+	connection.query(selectQuery, [email], (error, results, field)=>{
+		if(results.length == 0){ // this user is not in the database
+			var insertQuery = "insert into users (name, email, password) values (?, ?, ?);"
+			connection.query(insertQuery, [name, email, password], (error, results, field)=>{
+				if(error){
+					console.log(error);
+				}else{
+					console.log("Success");
+					res.redirect("/?msg=registered");
+				}
+			});
+		}else{
+			res.redirect("/?msg=fail");
+		}
+	});
+
 })
 module.exports = router;
