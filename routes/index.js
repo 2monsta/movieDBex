@@ -22,6 +22,14 @@ connection.connect((error)=>{
 	}
 });
 
+function searchUserName(email, pageToLoad){
+	//getting the username from the database where it matched the email used to log in
+	var searchquery = "select name from users where email = ?"
+	connection.query(searchquery, [email], (error, results, field)=>{
+		res.redirect(`/${pageToLoad}?msg=loggedIn&userName=${results[0].name}`);
+	});
+}
+
 /* GET home page. */
 // router.get('/', function(req, res, next) {
 // 	request.get(nowPlayingUrl, (error, response, movieData)=>{
@@ -69,35 +77,41 @@ connection.connect((error)=>{
 // })
 // anything in a form that has name send through a get request, is available inside the req.query
 
-//=========================INDEX
+//=========================INDEX============================
 router.get("/", (req, res, next)=>{
 	res.render("index");
 });
-//========================= NOW PLAYING 
+//========================= NOW PLAYING =====================
 router.get("/nowPlaying", (req, res, next)=>{
+	var message = req.query.msg;
+	var userName = req.query.userName;
+	var email = req.query.email;
+	console.log(userName);
+	console.log(email);
 	request.get(nowPlayingUrl, (error, response, movieData)=>{
 		if(error){
 			console.log(error);
 		}else{
-			var message = req.query.msg;
-			var userName = req.query.userName;
+
 			var parsedData = JSON.parse(movieData);
 			res.render("nowplaying", {
 				parsedData: parsedData.results,
 				imageBaseUrl: imageBaseUrl,
 				message:message,
-				username: userName
+				username: userName,
+				userEmail: email
 			});
+			// res.json(parsedData);
 		}
 	});
 });
 
-// =========================SINGLE MOVIE PAGE
+// =========================SINGLE MOVIE PAGE=====================
 router.get("/singlemovie/:id", (req, res, next)=>{
 	var movieID = req.params.id;
 	var thisMovieUrl = `${apiBaseUrl}/movie/${movieID}?api_key=${config.apiKey}`;
 	request(thisMovieUrl, (error, response, data)=>{
-		console.log(data);
+		// console.log(data);
 		var parsedData = JSON.parse(data);
 		res.render("singlepage", {
 			production:parsedData.production_companies,
@@ -108,7 +122,7 @@ router.get("/singlemovie/:id", (req, res, next)=>{
 });
 
 
-//===============REGISTRATION PAGE
+//===============REGISTRATION PAGE=====================
 router.get("/registerProcess", (req, res, next)=>{
 	var message = req.query.msg;
 	res.render("register", {message:message});
@@ -146,7 +160,7 @@ router.post("/registerProcess", (req, res, next)=>{
 
 })
 
-//===============LOGIN PAGE
+//===============LOGIN PAGE=====================
 router.get("/login", (req, res,next)=>{
 	res.render("login")
 });
@@ -168,17 +182,61 @@ router.post("/loginProcess", (req,res,next)=>{
 			if(doTheyMatch){
 				// this is what we are looking for
 				// we checked the english pass through bcrypt against the db has and they matched
-
-				//getting the username from the database where it matched the email used to log in
 				var searchquery = "select name from users where email = ?"
 				connection.query(searchquery, [email], (error, results, field)=>{
-					res.redirect(`/nowplaying?msg=loggedIn&userName=${results[0].name}`);
-				})
+					res.redirect(`/nowplaying?msg=loggedIn&userName=${results[0].name}&email=${email}`);
+				});
 			}else{
 				res.redirect("/registerProcess?msg=badpass");
 			}
 		}
 	})
+});
+
+
+//============================ADD TO FAVROTIE =====================
+router.get("/fav", (req, res, next)=>{
+	// res.send("you clicked fav")
+	// searchUserName(); need to pass the email around once the user log in
+
+	// var movieID = req.query.id;
+	// var thisMovieUrl = `${apiBaseUrl}/movie/${movieID}?api_key=${config.apiKey}`;
+	// request(thisMovieUrl, (error, response, data)=>{
+	// 	// console.log(data);
+	// 	var parsedData = JSON.parse(data);
+	// 	var movieObject = {
+	// 		thisUrl: parsedData.poster_path,
+	// 		title: parsedData.title,
+	// 		imageBaseUrl:imageBaseUrl
+	// 	}
+	// 	movieDetail.push(movieObject);
+	// 	res.render("fav", {
+	// 		movieDetail:movieDetail
+	// 	});
+		// res.json(parsedData);
+	// })	
+	var email = req.query.email;
+	console.log(email);
+	// check to see if the user is logged in
+		//search through the database and search for their favorites
+	var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+
+	connection.query(selectQ, [email], (error, results, field)=>{
+		
+		// if it's empty, insert it into the database
+		
+
+
+		console.log(selectQ);
+		res.render("fav", {
+			baseImageUrl:imageBaseUrl,
+			result: results
+		});
+	});
+
+
+	// if it's empty, insert it into the database
+
 });
 
 module.exports = router;
