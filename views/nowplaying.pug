@@ -1,0 +1,13 @@
+extends layout
+block script
+	script.
+		$(".username").html("#{username}")
+block content
+	.container
+		.row
+			h1 #{message}
+			-for(let i =0; i < parsedData.length; i++)
+				.col-sm-3
+					a(href=`/singlemovie/${parsedData[i].id}`)
+						img(src=`${imageBaseUrl}${parsedData[i].poster_path}` width="100%" height = "300px")
+						button.btn.btn-block.btn-success Add To Favorite

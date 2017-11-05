@@ -57,25 +57,6 @@ connection.connect((error)=>{
 	
 
 // })
-
-
-router.get("/", (req, res, next)=>{
-	// request.get(nowPlayingUrl, (error, response, movieData)=>{
-	// 	if(error){
-	// 		console.log(error);
-	// 	}else{
-	// 		var parsedData = JSON.parse(movieData);
-	// 		res.render("test", {
-	// 			parsedData: parsedData.results,
-	// 			imageBaseUrl: imageBaseUrl
-	// 		});
-	// 	}
-	// });
-	res.render("index");
-})
-
-
-
 // router.get("/movie/:movieID", (req, res)=>{
 // 	// somewhere in the movieAPI backend, they made some JSON then JSON.stringify
 // 	var movieID = req.params.movieID;
@@ -88,6 +69,46 @@ router.get("/", (req, res, next)=>{
 // })
 // anything in a form that has name send through a get request, is available inside the req.query
 
+//=========================INDEX
+router.get("/", (req, res, next)=>{
+	res.render("index");
+});
+//========================= NOW PLAYING 
+router.get("/nowPlaying", (req, res, next)=>{
+	request.get(nowPlayingUrl, (error, response, movieData)=>{
+		if(error){
+			console.log(error);
+		}else{
+			var message = req.query.msg;
+			var userName = req.query.userName;
+			var parsedData = JSON.parse(movieData);
+			res.render("nowplaying", {
+				parsedData: parsedData.results,
+				imageBaseUrl: imageBaseUrl,
+				message:message,
+				username: userName
+			});
+		}
+	});
+});
+
+// =========================SINGLE MOVIE PAGE
+router.get("/singlemovie/:id", (req, res, next)=>{
+	var movieID = req.params.id;
+	var thisMovieUrl = `${apiBaseUrl}/movie/${movieID}?api_key=${config.apiKey}`;
+	request(thisMovieUrl, (error, response, data)=>{
+		console.log(data);
+		var parsedData = JSON.parse(data);
+		res.render("singlepage", {
+			production:parsedData.production_companies,
+		 	genres: parsedData.genres
+		});
+		// res.json(parsedData);
+	})	
+});
+
+
+//===============REGISTRATION PAGE
 router.get("/registerProcess", (req, res, next)=>{
 	var message = req.query.msg;
 	res.render("register", {message:message});
@@ -101,8 +122,6 @@ router.post("/registerProcess", (req, res, next)=>{
 	// convert the english password to a bcrypt has
 
 	var hash = bcrypt.hashSync(password);
-
-
 	// checked to see if this person has been registerd
 	// we need a select statement
 	// if the email already exists, stop and send them an error
@@ -117,7 +136,7 @@ router.post("/registerProcess", (req, res, next)=>{
 					console.log(error);
 				}else{
 					console.log("Success");
-					res.redirect("/registerProcess?msg=registered");
+					res.redirect(`/nowPlaying?msg=registered&userName=${name}`);
 				}
 			});
 		}else{
@@ -127,7 +146,7 @@ router.post("/registerProcess", (req, res, next)=>{
 
 })
 
-
+//===============LOGIN PAGE
 router.get("/login", (req, res,next)=>{
 	res.render("login")
 });
@@ -139,7 +158,7 @@ router.post("/loginProcess", (req,res,next)=>{
 	connection.query(selectQuery, [email, password], (error, results, field)=>{
 		if(results.length == 0){
 			// these are what we are looking for
-			res.redirect("/");
+			res.redirect("/?msg=failed");//need to edit index page to correspond with failed message
 		}else{
 			// this email is in the databaes
 			// check to see if the password matches
@@ -149,7 +168,12 @@ router.post("/loginProcess", (req,res,next)=>{
 			if(doTheyMatch){
 				// this is what we are looking for
 				// we checked the english pass through bcrypt against the db has and they matched
-				res.redirect("/registerProcess?msg=loggedIN");
+
+				//getting the username from the database where it matched the email used to log in
+				var searchquery = "select name from users where email = ?"
+				connection.query(searchquery, [email], (error, results, field)=>{
+					res.redirect(`/nowplaying?msg=loggedIn&userName=${results[0].name}`);
+				})
 			}else{
 				res.redirect("/registerProcess?msg=badpass");
 			}
