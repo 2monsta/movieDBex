@@ -223,13 +223,15 @@ router.get("/fav", (req, res, next)=>{
 		var movieTitle = req.query.movieTitle;
 		// step ONE
 			// check to see if it's already in the database
-		var checkQuery = "select title from favorite where title = ?;";
+		var checkQuery = "select title from favorite where title = ?;"; //check email and favorite is in the database
 		connection.query(checkQuery, [movieTitle], (error, results, field)=>{
 			if(results.length ==0){ //nothing is found in the database
 				var getuserIdQuery = 'select id from users where email =?;';
 				connection.query(getuserIdQuery, [email], (error,results,field)=>{
+					console.log(results);
 					var id = results[0].id;
 					var insertQuery = "insert into favorite (userID, imageUrl, title) values (?, ?, ?);";
+					console.log(id);
 					connection.query(insertQuery, [id, postPath, movieTitle], (error, results, field)=>{
 						var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
 						connection.query(selectQ, [email], (error, results, field)=>{
@@ -258,5 +260,15 @@ router.get("/fav", (req, res, next)=>{
 		res.redirect("/nowplaying?msg=notloggedin");
 	}
 });
+
+// router.get("/favorite", (req, res, next)=>{
+// 	var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+// 	connection.query(selectQ, [email], (error, results, field)=>{
+// 		res.render("fav", {
+// 			baseImageUrl:imageBaseUrl,
+// 			result: results
+// 		});
+// 	});
+// })
 
 module.exports = router;
