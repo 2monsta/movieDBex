@@ -21,7 +21,7 @@ connection.connect((error)=>{
 		console.log(error);
 	}
 });
-
+var login = false;
 function searchUserName(email, pageToLoad){
 	//getting the username from the database where it matched the email used to log in
 	var searchquery = "select name from users where email = ?"
@@ -184,6 +184,7 @@ router.post("/loginProcess", (req,res,next)=>{
 				// we checked the english pass through bcrypt against the db has and they matched
 				var searchquery = "select name from users where email = ?"
 				connection.query(searchquery, [email], (error, results, field)=>{
+					login = true;
 					res.redirect(`/nowplaying?msg=loggedIn&userName=${results[0].name}&email=${email}`);
 				});
 			}else{
@@ -196,9 +197,9 @@ router.post("/loginProcess", (req,res,next)=>{
 
 //============================ADD TO FAVROTIE =====================
 router.get("/fav", (req, res, next)=>{
+	//============Without DB================
 	// res.send("you clicked fav")
 	// searchUserName(); need to pass the email around once the user log in
-
 	// var movieID = req.query.id;
 	// var thisMovieUrl = `${apiBaseUrl}/movie/${movieID}?api_key=${config.apiKey}`;
 	// request(thisMovieUrl, (error, response, data)=>{
@@ -215,28 +216,47 @@ router.get("/fav", (req, res, next)=>{
 	// 	});
 		// res.json(parsedData);
 	// })	
-	var email = req.query.email;
-	console.log(email);
-	// check to see if the user is logged in
-		//search through the database and search for their favorites
-	var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
-
-	connection.query(selectQ, [email], (error, results, field)=>{
-		
-		// if it's empty, insert it into the database
-		
-
-
-		console.log(selectQ);
-		res.render("fav", {
-			baseImageUrl:imageBaseUrl,
-			result: results
+	if(login){
+		//============With DB================
+		var email = req.query.email;
+		var postPath = req.query.postpath;
+		var movieTitle = req.query.movieTitle;
+		// step ONE
+			// check to see if it's already in the database
+		var checkQuery = "select title from favorite where title = ?;";
+		connection.query(checkQuery, [movieTitle], (error, results, field)=>{
+			if(results.length ==0){ //nothing is found in the database
+				var getuserIdQuery = 'select id from users where email =?;';
+				connection.query(getuserIdQuery, [email], (error,results,field)=>{
+					var id = results[0].id;
+					var insertQuery = "insert into favorite (userID, imageUrl, title) values (?, ?, ?);";
+					connection.query(insertQuery, [id, postPath, movieTitle], (error, results, field)=>{
+						var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+						connection.query(selectQ, [email], (error, results, field)=>{
+							res.render("fav", {
+								baseImageUrl:imageBaseUrl,
+								result: results
+							});
+						});
+					});
+				});
+			}else{
+				var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+				connection.query(selectQ, [email], (error, results, field)=>{
+					res.render("fav", {
+						baseImageUrl:imageBaseUrl,
+						result: results
+					});
+				});
+			}
 		});
-	});
+		// step TWO
+			// if it is, jsut render the page with whats in the db
+			// if not, insert it in to the page and render the page again
 
-
-	// if it's empty, insert it into the database
-
+	}else{
+		res.redirect("/nowplaying?msg=notloggedin");
+	}
 });
 
 module.exports = router;
