@@ -9,10 +9,4 @@ block content
 						img(src=`${imageBaseUrl}${parsedData[i].poster_path}` width="100%" height = "300px")
 					a(href=`/fav?id=${parsedData[i].id}&user=${username}&email=${userEmail}&postpath=${parsedData[i].poster_path}&movieTitle=${parsedData[i].title}`)
 						button.btn.btn-block.btn-success Add To Favorite
-
-
-
-
-block script
-	script.
-		$(".username").html("#{username}")
+	script(src="/javascripts/scripts.js")
