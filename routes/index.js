@@ -31,50 +31,14 @@ function searchUserName(email, pageToLoad){
 }
 
 /* GET home page. */
-// router.get('/', function(req, res, next) {
-// 	request.get(nowPlayingUrl, (error, response, movieData)=>{
-// 		if(error){
-// 			console.log(error);
-// 		}else{
-// 			var parsedData = JSON.parse(movieData);
-// 			res.render("test", {
-// 				parsedData: parsedData.results,
-// 				imageBaseUrl: imageBaseUrl
-// 			});
-// 		}
-// 	});
-//     // res.render('index', { title: 'Express' });
-// });
 // // if you have /: that part of the path is WILD
 // in this case /movie/:movieID will trigger on  /movie/ANYTHING
 // to access the anything, you go to req.params.ANYTHING
-// router.get("/movie/:movieID", (req, res)=>{
-// 	// somewhere in the movieAPI backend, they made some JSON then JSON.stringify
-// 	var movieID = req.params.movieID;
-// 	var thisMovieURL = `${apiBasedUrl}/movie/${movieID}?api_key=${config.apiKey}`
-// 	request.get(thisMovieURL, (error, response, movieData)=>{
-// 		var parsedData = JSON.parse(movieData);
-// 		// res.json(parsedData);
-// 		res.render("single-movie", {movieData: parsedData, imageBaseUrl: imageBaseUrl})
-// 	})
-// })
-// router.post("/search", (req,res)=>{
+
 // 	// res.send("search route here");
 // 	// anything in a form that has a name send through post is available inside the req.body object
 // 	// res.json(req.body); //will return the data back in json format
 	
-
-// })
-// router.get("/movie/:movieID", (req, res)=>{
-// 	// somewhere in the movieAPI backend, they made some JSON then JSON.stringify
-// 	var movieID = req.params.movieID;
-// 	var thisMovieURL = `${apiBasedUrl}/movie/${movieID}?api_key=${config.apiKey}`
-// 	request.get(thisMovieURL, (error, response, movieData)=>{
-// 		var parsedData = JSON.parse(movieData);
-// 		// res.json(parsedData);
-// 		res.render("single-movie", {movieData: parsedData, imageBaseUrl: imageBaseUrl})
-// 	})
-// })
 // anything in a form that has name send through a get request, is available inside the req.query
 
 //=========================INDEX============================
@@ -150,7 +114,8 @@ router.post("/registerProcess", (req, res, next)=>{
 					console.log(error);
 				}else{
 					console.log("Success");
-					res.redirect(`/nowPlaying?msg=registered&userName=${name}`);
+					// res.redirect(`/nowPlaying?msg=registered&userName=${name}`);
+					res.redirect("/login");
 				}
 			});
 		}else{
@@ -196,6 +161,7 @@ router.post("/loginProcess", (req,res,next)=>{
 
 
 //============================ADD TO FAVROTIE =====================
+// adds to database and then display
 router.get("/fav", (req, res, next)=>{
 	//============Without DB================
 	// res.send("you clicked fav")
@@ -218,61 +184,143 @@ router.get("/fav", (req, res, next)=>{
 	// })	
 	if(login){
 		//============With DB================
+		console.log(login);
 		var email = req.query.email;
 		var postPath = req.query.postpath;
 		var movieTitle = req.query.movieTitle;
+
+		function checkEmailInDB(email){
+			return new Promise((resolve, reject)=>{
+				var getID = "select id from users where email = ?;";
+					connection.query(getID, [email], (error, results, field)=>{
+						var userID = results[0].id;
+						resolve(userID);
+					});
+			})
+		}
+		function checkWhatsInDB(movieTitle, userID, email){
+			return new Promise ((resolve, reject)=>{
+				var checkQuery = "select title from favorite where title = ? and userID = ?;"; //check email and favorite is in the database
+				connection.query(checkQuery, [movieTitle, userID], (error, results, field)=>{
+					if(results.length ==0){ //nothing is found in the database
+						resolve(email);
+					}else{
+						resolve("someing in DB");
+					}
+				});
+			})
+		}
+		function getUserFromDB(email){
+			return new Promise((resolve, reject)=>{
+				var getuserIdQuery = 'select id from users where email =?;';
+				connection.query(getuserIdQuery, [email], (error,results,field)=>{
+					var id = results[0].id;
+					resolve(id);
+				});
+			})
+		}
+		function insertToDB(id, postPath, movieTitle){
+			return new Promise((resolve, reject)=>{
+				var insertQuery = "insert into favorite (userID, imageUrl, title) values (?, ?, ?);";
+				console.log(id);
+				connection.query(insertQuery, [id, postPath, movieTitle], (error, results, field)=>{
+					resolve("success");
+				});
+			})
+		}
+
+		function getMoiveToView(email){
+			return new Promise((resolve, reject)=>{
+				var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+				connection.query(selectQ, [email], (error, results, field)=>{
+					resolve({
+						baseImageUrl:imageBaseUrl,
+						result: results
+					})
+				});
+			})
+		}
+		checkEmailInDB(email)
+		.then((userID)=>{
+			// console.log(userID);
+			// console.log(email);
+			return checkWhatsInDB(movieTitle, userID, email)
+		})
+		.then((data)=>{
+			console.log(data);
+			// console.log(email);
+		 	return getUserFromDB(data)
+		})
+		.then((id)=>{
+			return insertToDB(id, postPath, movieTitle)
+		})
+		.then((useless)=>{
+			return getMoiveToView(email)
+		})
+		.then((result)=>{
+			console.log(result);
+			return res.render("fav", {result: result});
+		})
+
 		// step ONE
 			// check to see if it's already in the database
-		var getID = "select id from users where email = ?;";
-		connection.query(getID, [email], (error, results, field)=>{
-			var userI = results[0].id;
-			var checkQuery = "select title from favorite where title = ? and userID = ?;"; //check email and favorite is in the database
-			connection.query(checkQuery, [movieTitle, userI], (error, results, field)=>{
-				if(results.length ==0){ //nothing is found in the database
-					var getuserIdQuery = 'select id from users where email =?;';
-					connection.query(getuserIdQuery, [email], (error,results,field)=>{
-						console.log(results);
-						var id = results[0].id;
-						var insertQuery = "insert into favorite (userID, imageUrl, title) values (?, ?, ?);";
-						console.log(id);
-						connection.query(insertQuery, [id, postPath, movieTitle], (error, results, field)=>{
-							var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
-							connection.query(selectQ, [email], (error, results, field)=>{
-								res.render("fav", {
-									baseImageUrl:imageBaseUrl,
-									result: results
-								});
-							});
-						});
-					});
-				}else{
-					var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
-					connection.query(selectQ, [email], (error, results, field)=>{
-						res.render("fav", {
-							baseImageUrl:imageBaseUrl,
-							result: results
-						});
-					});
-				}
-			});
-		})
-		// step TWO
-			// if it is, jsut render the page with whats in the db
-			// if not, insert it in to the page and render the page again
+	// 	var getID = "select id from users where email = ?;";
+	// 	connection.query(getID, [email], (error, results, field)=>{
+	// 		var userI = results[0].id;
+	// 		var checkQuery = "select title from favorite where title = ? and userID = ?;"; //check email and favorite is in the database
+	// 		connection.query(checkQuery, [movieTitle, userI], (error, results, field)=>{
+	// 			if(results.length ==0){ //nothing is found in the database
+	// 				var getuserIdQuery = 'select id from users where email =?;';
+	// 				connection.query(getuserIdQuery, [email], (error,results,field)=>{
+	// 					console.log(results);
+	// 					var id = results[0].id;
+	// 					var insertQuery = "insert into favorite (userID, imageUrl, title) values (?, ?, ?);";
+	// 					console.log(id);
+	// 					connection.query(insertQuery, [id, postPath, movieTitle], (error, results, field)=>{
+	// 						// get the image url and title from fav and joining users to check who's favorites we are getting by using email because email cannot be duplicated
+	// 						var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+	// 						connection.query(selectQ, [email], (error, results, field)=>{
+	// 							res.render("fav", {
+	// 								baseImageUrl:imageBaseUrl,
+	// 								result: results
+	// 							});
+	// 						});
+	// 					});
+	// 				});
+	// // 			}else{
+	// 				var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+	// 				connection.query(selectQ, [email], (error, results, field)=>{
+	// 					res.render("fav", {
+	// 						baseImageUrl:imageBaseUrl,
+	// 						result: results
+	// 					});
+	// 				});
+	// 			}
+	// 		});
+	// 	});
 
-	}else{
-		res.redirect("/nowplaying?msg=notloggedin");
+	// }else{
+	// 	res.redirect("/nowplaying?msg=notloggedin");
 	}
 });
+// display what you already have in the database
+router.get("/favorite", (req, res, next)=>{
+	// var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
+	// connection.query(selectQ, [email], (error, results, field)=>{
+	// 	res.render("fav", {
+	// 		baseImageUrl:imageBaseUrl,
+	// 		result: results
+	// 	});
+	// });
 
-// router.get("/favorite", (req, res, next)=>{
-// 	var selectQ = "select f.title, f.imageUrl, f.userID from favorite as f join users as u on f.userID = u.id where u.email=? ;";
-// 	connection.query(selectQ, [email], (error, results, field)=>{
-// 		res.render("fav", {
-// 			baseImageUrl:imageBaseUrl,
-// 			result: results
-// 		});
-// 	});
-// })
+	// STEP ONE
+		//Check which user are you and if you are logged in
+	// Load the page with what you have in the databse
+})
 
 module.exports = router;
+
+
+
+// TODO: favorites nav bar doesnt work because it needs to check vs database, only works when you log in first
+// TODO: after you log in, you should be able to click on favorite to list your favorites
